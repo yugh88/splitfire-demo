@@ -7,6 +7,46 @@ import { validateCreateTask, validateTaskPatch } from "../utils/validate.js";
 import { badRequest, notFound } from "./errors.js";
 import { notifyTaskAssigned, notifyTaskCompleted } from "./notificationService.js";
 
+/**
+ * Accepts a timestamp string or null and stores it in canonical ISO 8601 form so
+ * that reminders can compare due dates without parsing quirks.
+ */
+function normalizeDueDate(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== "string" || value.trim() === "") {
+    throw badRequest("dueDate must be an ISO 8601 timestamp or null", ["invalid field: dueDate"]);
+  }
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    throw badRequest(`dueDate is not a valid timestamp: ${value}`, ["invalid field: dueDate"]);
+  }
+  return new Date(parsed).toISOString();
+}
+
+function normalizeEmailReminder(value: unknown): boolean {
+  if (typeof value !== "boolean") {
+    throw badRequest("emailReminderEnabled must be a boolean", [
+      "invalid field: emailReminderEnabled",
+    ]);
+  }
+  return value;
+}
+
+function pickDueDateFields(input: {
+  dueDate?: string | null;
+  emailReminderEnabled?: boolean;
+}): {
+  dueDate?: string | null;
+  emailReminderEnabled?: boolean;
+} {
+  const picked: { dueDate?: string | null; emailReminderEnabled?: boolean } = {};
+  if (input.dueDate !== undefined) picked.dueDate = normalizeDueDate(input.dueDate);
+  if (input.emailReminderEnabled !== undefined) {
+    picked.emailReminderEnabled = normalizeEmailReminder(input.emailReminderEnabled);
+  }
+  return picked;
+}
+
 export function listTasks(filter: TaskFilter = {}): Task[] {
   return taskStore.query(filter);
 }
@@ -23,6 +63,7 @@ export function createTask(input: CreateTaskInput): Task {
     throw badRequest(`invalid task payload: ${check.errors.join("; ")}`, check.errors);
   }
 
+  const dueFields = pickDueDateFields(input);
   const assigneeId = input.assigneeId ?? null;
   const assignee = assigneeId ? userStore.findById(assigneeId) : undefined;
   if (assigneeId && !assignee) throw notFound(`assignee ${assigneeId} was not found`);
@@ -35,6 +76,8 @@ export function createTask(input: CreateTaskInput): Task {
     status: "todo",
     priority: input.priority ?? "medium",
     assigneeId,
+    dueDate: dueFields.dueDate ?? null,
+    emailReminderEnabled: dueFields.emailReminderEnabled ?? false,
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -46,27 +89,36 @@ export function createTask(input: CreateTaskInput): Task {
 
 export function updateTask(id: string, patch: UpdateTaskInput): Task {
   const existing = getTask(id);
-  const check = validateTaskPatch(patch);
-  if (!check.ok) {
-    throw badRequest(`invalid task patch: ${check.errors.join("; ")}`, check.errors);
-  }
 
-  if (patch.assigneeId) {
-    if (!userStore.findById(patch.assigneeId)) {
-      throw notFound(`assignee ${patch.assigneeId} was not found`);
+  const { dueDate, emailReminderEnabled, ...core } = patch;
+  const hasDueFields = dueDate !== undefined || emailReminderEnabled !== undefined;
+  if (!hasDueFields || Object.keys(core).length > 0) {
+    const check = validateTaskPatch(core);
+    if (!check.ok) {
+      throw badRequest(`invalid task patch: ${check.errors.join("; ")}`, check.errors);
     }
   }
 
+  if (core.assigneeId) {
+    if (!userStore.findById(core.assigneeId)) {
+      throw notFound(`assignee ${core.assigneeId} was not found`);
+    }
+  }
+
+  const dueFields = pickDueDateFields({ dueDate, emailReminderEnabled });
   const next: Task = {
     ...existing,
-    ...patch,
-    assigneeId: patch.assigneeId === undefined ? existing.assigneeId : patch.assigneeId,
+    ...core,
+    assigneeId: core.assigneeId === undefined ? existing.assigneeId : core.assigneeId,
+    dueDate: dueFields.dueDate === undefined ? existing.dueDate ?? null : dueFields.dueDate,
+    emailReminderEnabled:
+      dueFields.emailReminderEnabled ?? existing.emailReminderEnabled ?? false,
     updatedAt: nowIso(),
   };
   taskStore.save(next);
   logger.info("task updated", { taskId: id, status: next.status });
 
-  if (patch.status === "done" && existing.status !== "done") {
+  if (core.status === "done" && existing.status !== "done") {
     const assignee = next.assigneeId ? userStore.findById(next.assigneeId) : undefined;
     notifyTaskCompleted(next, assignee);
   }
