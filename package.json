@@ -1,0 +1,29 @@
+{
+  "name": "taskly",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Taskly - a tiny task tracker API used as a demo repo for Splitfire",
+  "type": "module",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node dist/src/server.js"
+  },
+  "keywords": [
+    "splitfire",
+    "demo",
+    "typescript",
+    "task-tracker"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
