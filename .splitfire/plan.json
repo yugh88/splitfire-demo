@@ -1,0 +1,178 @@
+{
+  "id": "08a72ebd59b333cb",
+  "repo": "yugh88/splitfire-demo",
+  "sha": "8a1f8feeafa2bba54c661e8ba750ed17f7ef93a8",
+  "request": "Add task due dates and email reminders",
+  "tasks": [
+    {
+      "id": "task-schema-update",
+      "title": "Update Task Types",
+      "goal": "Add dueDate and emailReminderEnabled fields to Task and input types.",
+      "kind": "contract",
+      "ownedFiles": [
+        "src/types/task.ts"
+      ],
+      "readFiles": [],
+      "dependsOn": [],
+      "difficulty": 1,
+      "model": "gemma-4-26b-a4b-it",
+      "estTokens": 3020,
+      "estCostUsd": 0,
+      "estMinutes": 11,
+      "acceptance": [
+        "npm run typecheck",
+        "git diff --name-only touches only owned files"
+      ]
+    },
+    {
+      "id": "task-service-logic",
+      "title": "Update Task Service",
+      "goal": "Implement due date handling and logic for updating tasks with new fields.",
+      "kind": "feature",
+      "ownedFiles": [
+        "src/services/taskService.ts"
+      ],
+      "readFiles": [
+        "src/services/errors.ts",
+        "src/services/notificationService.ts",
+        "src/store/taskStore.ts",
+        "src/store/userStore.ts",
+        "src/types/index.ts",
+        "src/utils/ids.ts",
+        "src/utils/logger.ts",
+        "src/utils/validate.ts"
+      ],
+      "dependsOn": [
+        "task-schema-update"
+      ],
+      "difficulty": 2,
+      "model": "gemma-4-26b-a4b-it",
+      "estTokens": 19510,
+      "estCostUsd": 0,
+      "estMinutes": 18,
+      "acceptance": [
+        "npm run typecheck",
+        "npm run build",
+        "git diff --name-only touches only owned files"
+      ]
+    },
+    {
+      "id": "task-api-routes",
+      "title": "Update Task Routes",
+      "goal": "Expose due date and email reminder settings via the API endpoints.",
+      "kind": "feature",
+      "ownedFiles": [
+        "src/routes/tasks.ts"
+      ],
+      "readFiles": [
+        "src/routes/respond.ts",
+        "src/services/errors.ts",
+        "src/services/taskService.ts",
+        "src/types/index.ts",
+        "src/utils/validate.ts"
+      ],
+      "dependsOn": [
+        "task-schema-update"
+      ],
+      "difficulty": 2,
+      "model": "gemma-4-26b-a4b-it",
+      "estTokens": 16709,
+      "estCostUsd": 0,
+      "estMinutes": 18,
+      "acceptance": [
+        "npm run typecheck",
+        "npm run build",
+        "git diff --name-only touches only owned files"
+      ]
+    },
+    {
+      "id": "notification-email-service",
+      "title": "Implement Email Notification Logic",
+      "goal": "Extend notificationService to handle email-based reminders.",
+      "kind": "feature",
+      "ownedFiles": [
+        "src/services/notificationService.ts"
+      ],
+      "readFiles": [
+        "src/types/index.ts",
+        "src/utils/ids.ts",
+        "src/utils/logger.ts"
+      ],
+      "dependsOn": [
+        "task-schema-update"
+      ],
+      "difficulty": 3,
+      "model": "gemma-4-26b-a4b-it",
+      "estTokens": 13206,
+      "estCostUsd": 0,
+      "estMinutes": 28,
+      "acceptance": [
+        "npm run typecheck",
+        "npm run build",
+        "git diff --name-only touches only owned files"
+      ]
+    },
+    {
+      "id": "reminder-scheduler",
+      "title": "Implement Reminder Scheduler",
+      "goal": "Create a background process/service to check for upcoming due dates and trigger notifications.",
+      "kind": "feature",
+      "ownedFiles": [
+        "src/services/reminderService.ts"
+      ],
+      "readFiles": [],
+      "dependsOn": [
+        "task-service-logic",
+        "notification-email-service"
+      ],
+      "difficulty": 3,
+      "model": "gemma-4-26b-a4b-it",
+      "estTokens": 7000,
+      "estCostUsd": 0,
+      "estMinutes": 28,
+      "acceptance": [
+        "npm run typecheck",
+        "npm run build",
+        "test -f src/services/reminderService.ts",
+        "git diff --name-only touches only owned files"
+      ]
+    },
+    {
+      "id": "task-feature-tests",
+      "title": "Test Task Reminders",
+      "goal": "Add unit and integration tests for due dates and notification triggers.",
+      "kind": "test",
+      "ownedFiles": [
+        "tests/taskService.test.ts"
+      ],
+      "readFiles": [
+        "src/services/errors.ts",
+        "src/services/notificationService.ts",
+        "src/services/taskService.ts",
+        "src/services/userService.ts",
+        "src/store/taskStore.ts",
+        "src/store/userStore.ts"
+      ],
+      "dependsOn": [
+        "reminder-scheduler"
+      ],
+      "difficulty": 2,
+      "model": "gemma-4-26b-a4b-it",
+      "estTokens": 18929,
+      "estCostUsd": 0,
+      "estMinutes": 18,
+      "acceptance": [
+        "npx vitest run tests/taskService.test.ts",
+        "git diff --name-only touches only owned files"
+      ]
+    }
+  ],
+  "collisionScore": 0,
+  "serialMinutes": 121,
+  "parallelMinutes": 85,
+  "speedup": 1.4,
+  "agents": 3,
+  "tokensFullRepo": 51594,
+  "tokensWithPacks": 14241,
+  "totalCostUsd": 0
+}
